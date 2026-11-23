@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'">
+<title>单词小英雄</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="titlebar"><img src="icon.svg" alt=""><span>单词小英雄</span></div>
+<div id="app">
+  <nav id="nav">
+    <div class="nav-items">
+      <button class="nav-item" data-act="nav" data-page="home"><i>🏠</i><span>首页</span></button>
+      <button class="nav-item" data-act="nav" data-page="learn"><i>📖</i><span>三步记忆</span></button>
+      <button class="nav-item" data-act="nav" data-page="map"><i>🗺️</i><span>闯关挑战</span></button>
+      <button class="nav-item" data-act="nav" data-page="practice"><i>🎮</i><span>趣味练习</span></button>
+      <button class="nav-item" data-act="nav" data-page="scan"><i>📷</i><span>拍照识词</span></button>
+      <button class="nav-item" data-act="nav" data-page="mistakes"><i>📕</i><span>错词本</span><b class="badge" id="nav-miss"></b></button>
+    </div>
+    <div class="nav-foot">
+      <div class="nav-level" id="nav-level"></div>
+      <button class="nav-item" data-act="nav" data-page="settings"><i>⚙️</i><span>设置</span></button>
+    </div>
+  </nav>
+  <main id="view"></main>
+</div>
+<div id="overlay" hidden></div>
+<div id="modal" hidden></div>
+<div id="toasts"></div>
+<canvas id="confetti"></canvas>
+<script src="js/preprocess.js"></script>
+<script src="js/core.js"></script>
+<script src="js/widgets.js"></script>
+<script src="js/study.js"></script>
+<script src="js/game.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/scan.js"></script>
+<script src="js/pages.js"></script>
+</body>
+</html>

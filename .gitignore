@@ -1,0 +1,5 @@
+node_modules/
+dist/
+ecdict.csv
+*.log
+.DS_Store

@@ -1,0 +1,75 @@
+{
+  "name": "word-hero",
+  "productName": "WordHero",
+  "version": "1.0.0",
+  "description": "单词小英雄 WordHero — 小学到初中的英语单词记忆软件：三步记忆、闯关挑战、拍照识词",
+  "main": "main.js",
+  "author": "Rowan-Achterberg",
+  "license": "MIT",
+  "homepage": "https://github.com/Rowan-Achterberg/word-hero",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rowan-Achterberg/word-hero.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dict": "python3 tools/build_dict.py ecdict.csv",
+    "test": "node tools/test-logic.js",
+    "dist": "electron-builder --win nsis --arm64 --publish never && electron-builder --win nsis --x64 --publish never",
+    "dist:arm64": "electron-builder --win nsis --arm64 --publish never"
+  },
+  "dependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.rowanachterberg.wordhero",
+    "productName": "WordHero",
+    "copyright": "Copyright © 2026 Rowan-Achterberg",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "dict.js",
+      "ocr.js",
+      "winocr.ps1",
+      "src/**/*",
+      "build/icon.png",
+      "!node_modules/@tesseract.js-data/eng/4.0.0/**",
+      "!**/*.map",
+      "!**/{README,readme,CHANGELOG,changelog}*"
+    ],
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "单词小英雄",
+      "uninstallDisplayName": "单词小英雄 WordHero",
+      "artifactName": "WordHero-Setup-${version}-${arch}.${ext}",
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "language": "2052"
+    }
+  }
+}

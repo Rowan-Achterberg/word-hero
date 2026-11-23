@@ -1,0 +1,44 @@
+name: Build Windows installers
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Logic tests (dictionary, OCR merge rules)
+        run: npm test
+      - name: Build ARM64 installer
+        run: npx electron-builder --win nsis --arm64 --publish never
+      - name: Build x64 installer
+        run: npx electron-builder --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WordHero-installers
+          path: dist/WordHero-Setup-*.exe
+          if-no-files-found: error
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 单词小英雄 WordHero ${{ github.ref_name }}
+          files: dist/WordHero-Setup-*.exe
+          body: |
+            ## 下载安装
+            - **Windows 11 ARM64**（骁龙等 ARM 电脑）：下载 `WordHero-Setup-*-arm64.exe`
+            - 普通 Intel / AMD 电脑：下载 `WordHero-Setup-*-x64.exe`
+
+            双击安装即可。安装包没有购买代码签名证书，首次运行如果出现 Windows SmartScreen 提示，请点「更多信息 → 仍要运行」。
