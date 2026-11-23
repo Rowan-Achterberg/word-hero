@@ -85,7 +85,7 @@ npm test           # 词典、词库、图像预处理的逻辑测试
 npm run dist       # 在 Windows 上生成 ARM64 和 x64 安装包（dist/ 目录）
 ```
 
-推送 `v*` 标签后，GitHub Actions 会在 Windows 上构建两个安装包并发布到 Releases。
+每次推送到 `main`，GitHub Actions 会在 Windows 上构建两个安装包，并发布到与 `package.json` 版本号对应的 Release（发新版时先改版本号）。
 
 重新生成词库：下载 [ECDICT](https://github.com/skywind3000/ECDICT) 的 `ecdict.csv` 放到项目根目录，运行 `npm run dict`。
 小学、初中词书的单词和释义在 `tools/primary.txt`、`tools/junior.txt` 里，可以直接修改。
