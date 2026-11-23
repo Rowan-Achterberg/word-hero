@@ -125,7 +125,9 @@ function classify(tokens, engineCount) {
     if (e) {
       const sure = (conf != null && conf >= 75) || p.votes >= 2;
       // short "words" are what stray marks and Chinese characters usually turn into: demand strong evidence
-      if (p.t.length <= 3 && !((p.votes >= 2 && (conf == null || conf >= 60)) || (conf != null && conf >= 90))) { ignored++; continue; }
+      const strong = conf != null && conf >= 90;
+      if (p.t.length <= 2 && !(p.votes >= 2 && conf != null && conf >= 92)) { ignored++; continue; }
+      if (p.t.length === 3 && !(strong || (p.votes >= 2 && (conf == null || conf >= 75)))) { ignored++; continue; }
       status = sure ? 'ok' : 'warn';
       if (!sure) note = '识别把握不大，请对照原图确认';
       if (altsKnown.length && p.votes < 2 && (conf == null || conf < 90)) { status = 'warn'; note = '几次识别结果不一致，请对照原图确认'; }
@@ -135,7 +137,7 @@ function classify(tokens, engineCount) {
       altsKnown.splice(altsKnown.indexOf(pick), 1);
       e = dict.lookup(pick); status = 'warn'; note = `原识别为 “${p.t}”，已按另一次识别更正，请确认`;
     } else {
-      if (p.t.length <= 2 || (conf != null && conf < 60)) { ignored++; continue; }
+      if (p.t.length <= 2 || (conf != null && conf < 60) || (p.t.length === 3 && !(conf != null && conf >= 90))) { ignored++; continue; }
       status = 'bad'; note = '词典里没有这个词，可能识别有误';
     }
     const word = e ? e.w : p.t;
@@ -153,7 +155,44 @@ function classify(tokens, engineCount) {
   return { items, ignored };
 }
 
-// images: { gray: Buffer(PNG), bin: Buffer(PNG) } — same pixel size.
+// Word lists are often printed in two or three columns. OCR may read such a page row by row, which would
+// mix the columns; pupils must get the words in list order, so detect columns from the aligned left edges
+// of the words and read each column top to bottom. Every item keeps `seq` (the row-by-row order).
+function orderColumns(items, width) {
+  items.forEach((it, i) => { it.seq = i; });
+  const n = items.length;
+  if (n < 8 || !width) return 1;
+  const tol = width * 0.012;
+  const sorted = [...items].sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  const clusters = [];
+  for (const it of sorted) {
+    const last = clusters[clusters.length - 1];
+    if (last && it.bbox.x0 - last.max <= tol) { last.items.push(it); last.max = it.bbox.x0; } else clusters.push({ min: it.bbox.x0, max: it.bbox.x0, items: [it] });
+  }
+  const big = clusters.filter((c) => c.items.length >= Math.max(4, n * 0.2));
+  if (big.length < 2 || big.reduce((a, c) => a + c.items.length, 0) < n * 0.75) return 1;
+  for (let i = 1; i < big.length; i++) if (big[i].min - big[i - 1].max < width * 0.15) return 1;
+  const top = Math.min(...big.flatMap((c) => c.items.map((it) => it.bbox.y0)));
+  const colOf = (it) => { let c = 0; big.forEach((b, i) => { if (it.bbox.x0 >= b.min - tol) c = i; }); return c; };
+  const head = items.filter((it) => it.bbox.y1 < top);
+  const mid = (it) => (it.bbox.y0 + it.bbox.y1) / 2;
+  const body = [];
+  big.forEach((_, c) => {
+    // inside a column: top to bottom line by line, left to right within a line
+    const col = items.filter((it) => it.bbox.y1 >= top && colOf(it) === c).sort((a, b) => mid(a) - mid(b));
+    let line = [];
+    const flush = () => { body.push(...line.sort((a, b) => a.bbox.x0 - b.bbox.x0)); line = []; };
+    for (const it of col) {
+      if (line.length && mid(it) - mid(line[0]) > (line[0].bbox.y1 - line[0].bbox.y0) * 0.6) flush();
+      line.push(it);
+    }
+    flush();
+  });
+  items.splice(0, n, ...head, ...body);
+  return big.length;
+}
+
+// images: { gray: Buffer(PNG), bin: Buffer(PNG), w } — same pixel size.
 async function run(images, onProgress = () => {}) {
   const engines = [];
   onProgress({ step: 1, total: 4, text: '第一遍识别（灰度图）…' });
@@ -177,7 +216,8 @@ async function run(images, onProgress = () => {}) {
     m.inserted = true; insertByPosition(primary, m);
   }
   const { items, ignored } = classify(primary, engines.length);
-  return { items, ignored, engines };
+  const columns = orderColumns(items, images.w);
+  return { items, ignored, engines, columns };
 }
 
 async function shutdown() {

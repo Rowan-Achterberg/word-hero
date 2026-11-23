@@ -1,7 +1,7 @@
 {
   "name": "word-hero",
   "productName": "WordHero",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "单词小英雄 WordHero — 小学到初中的英语单词记忆软件：三步记忆、闯关挑战、拍照识词",
   "main": "main.js",
   "author": "Rowan-Achterberg",

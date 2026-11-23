@@ -70,7 +70,7 @@ ipcMain.handle('dict:suggest', (_e, word) => dict.suggest(word));
 // ---------- OCR ----------
 ipcMain.handle('ocr:run', async (e, images) => {
   try {
-    const res = await ocr.run({ gray: Buffer.from(images.gray), bin: Buffer.from(images.bin) }, (p) => e.sender.send('ocr:progress', p));
+    const res = await ocr.run({ gray: Buffer.from(images.gray), bin: Buffer.from(images.bin), w: images.w }, (p) => e.sender.send('ocr:progress', p));
     return { ok: true, ...res };
   } catch (err) {
     return { ok: false, error: String((err && err.message) || err) };

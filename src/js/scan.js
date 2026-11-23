@@ -44,17 +44,17 @@ const Scan = {
       let res, prep;
       for (let attempt = 0; attempt < 2; attempt++) {
         prep = await this.prepare(scale);
-        res = await api.ocr({ gray: prep.gray, bin: prep.bin });
+        res = await api.ocr({ gray: prep.gray, bin: prep.bin, w: prep.w });
         if (!res.ok) throw new Error(res.error);
         // Text much smaller or larger than the size OCR reads best: rescale once and read again.
         const hs = res.items.map((i) => i.bbox.y1 - i.bbox.y0).sort((a, b) => a - b), med = hs[Math.floor(hs.length / 2)];
         if (attempt || hs.length < 3 || (med >= 28 && med <= 95)) break;
-        const next = Math.min(4, Math.max(0.25, (scale * 44) / med));
-        if (Math.abs(next / scale - 1) < 0.25 || long * next > 4600) break;
+        const next = Math.min(4, 4600 / long, Math.max(0.25, (scale * 44) / med));
+        if (Math.abs(next / scale - 1) < 0.25) break;
         scale = next; this.busy = '文字偏' + (med < 28 ? '小' : '大') + '，调整大小后再识别一遍…'; const el = $('#scan-busy'); if (el) el.textContent = this.busy;
       }
       this.size = { w: prep.w, h: prep.h };
-      this.items = res.items; this.info = { ignored: res.ignored, engines: res.engines };
+      this.items = res.items; this.info = { ignored: res.ignored, engines: res.engines, columns: res.columns, byRow: false };
       const d = new Date(); this.name = `拍照词表 ${d.getMonth() + 1}-${d.getDate()}`;
       if (!res.items.length) UI.toast('没有识别到英文单词。请确认照片清晰、文字是正的，或点「旋转」后重试。', 'bad');
     } catch (err) {
@@ -107,6 +107,7 @@ const Scan = {
         ${this.info.ignored ? `<span class="mute">另有 ${this.info.ignored} 处看不清的片段已忽略</span>` : ''}
         ${this.info.engines.length ? `<span class="mute" title="${esc(this.info.engines.join(' + '))}">${this.info.engines.length} 遍识别互相印证</span>` : ''}
       </div>
+      ${this.info.columns > 1 ? `<div class="scan-note cols">📑 这张单词表有 ${this.info.columns} 栏，现在的顺序是<b>${this.info.byRow ? '一行一行从左到右' : '先读完左边一栏，再读右边一栏'}</b>。<button class="link" data-act="scan-order">${this.info.byRow ? '改为一栏一栏读' : '改为一行一行读'}</button></div>` : ''}
       <div class="scan-note">只有<b>打勾</b>的词会进入学习。黄色和红色的词默认不勾选，请对照${this.manual ? '原文' : '左边原图'}确认或改正；单词和中文都可以直接修改。</div>
       <div class="scan-rows">
         ${it.map((x, i) => `
@@ -120,7 +121,7 @@ const Scan = {
           </div>`).join('')}
       </div>
       <div class="scan-foot">
-        <button class="btn ghost" data-act="scan-all">全选已核对</button><button class="btn ghost" data-act="scan-none">全不选</button>
+        <button class="btn ghost" data-act="scan-add">＋ 补一个词</button><button class="btn ghost" data-act="scan-all">全选已核对</button><button class="btn ghost" data-act="scan-none">全不选</button>
         <span class="grow"></span>
         <input id="scan-name" value="${esc(this.name)}" maxlength="24" title="词表名称">
         <button class="btn" data-act="scan-save" ${n ? '' : 'disabled'}>保存词表（${n} 词）</button>
@@ -198,6 +199,16 @@ Act['scan-rotate'] = () => { Scan.rot = (Scan.rot + 90) % 360; Scan.recognize();
 Act['scan-new'] = () => { Scan.reset(); go('scan'); };
 Act['scan-all'] = () => { Scan.items.forEach((x) => { if (x.status === 'ok') x.checked = true; }); Scan.redraw(); };
 Act['scan-none'] = () => { Scan.items.forEach((x) => { x.checked = false; }); Scan.redraw(); };
+Act['scan-order'] = () => {
+  const info = Scan.info; info.byRow = !info.byRow;
+  if (info.byRow) { Scan.items.forEach((x, i) => { x.col = i; }); Scan.items.sort((a, b) => (a.seq ?? 1e9) - (b.seq ?? 1e9)); }
+  else Scan.items.sort((a, b) => (a.col ?? 1e9) - (b.col ?? 1e9));
+  Scan.redraw(); Scan.drawBoxes();
+};
+Act['scan-add'] = () => {
+  Scan.items.push({ w: '', raw: '', p: '', m: '', status: 'bad', note: '请输入单词，按回车核对', sugg: [], checked: false, bbox: null });
+  Scan.redraw(); const rows = $('.scan-rows'); rows.scrollTop = rows.scrollHeight; $$('.s-w').pop().focus();
+};
 Act['scan-save'] = () => { if (Scan.save()) go('learn'); };
 Act['scan-learn'] = () => { const l = Scan.save(); if (l) { go('learn'); startGroup(l.id, 0, () => go('learn')); } };
 Act['scan-text'] = async () => {
